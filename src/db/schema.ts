@@ -8,6 +8,7 @@ import {
   date,
   timestamp,
   unique,
+  index,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
@@ -43,7 +44,11 @@ export const habitLogs = pgTable('habit_logs', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   date: date('date').notNull(),
   count: numeric('count', { precision: 5, scale: 2 }).default('0').notNull(),
-}, (t) => [unique().on(t.habitId, t.date)])
+}, (t) => [
+  unique().on(t.habitId, t.date),
+  index('habit_logs_user_date_idx').on(t.userId, t.date),
+  index('habit_logs_habit_date_idx').on(t.habitId, t.date),
+])
 
 // ── Tags ───────────────────────────────────────────────────────────────────────
 export const tags = pgTable('tags', {
@@ -79,7 +84,10 @@ export const dailyMetrics = pgTable('daily_metrics', {
   calories: numeric('calories', { precision: 7, scale: 2 }).default('0').notNull(),
   sleep: numeric('sleep', { precision: 4, scale: 2 }),
   steps: integer('steps').default(0).notNull(),
-}, (t) => [unique().on(t.userId, t.date)])
+}, (t) => [
+  unique().on(t.userId, t.date),
+  index('daily_metrics_user_date_idx').on(t.userId, t.date),
+])
 
 // ── Journal Entries ────────────────────────────────────────────────────────────
 export const journalEntries = pgTable('journal_entries', {
