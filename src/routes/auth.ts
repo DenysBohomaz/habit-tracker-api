@@ -36,8 +36,10 @@ export default async function authRoutes(app: FastifyInstance) {
     return reply.code(201).send({ token, user: { id: user.id, email: user.email, name: user.name } })
   })
 
-  // POST /auth/login
-  app.post('/auth/login', async (req, reply) => {
+  // POST /auth/login — rate limited
+  app.post('/auth/login', {
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const body = loginSchema.safeParse(req.body)
     if (!body.success) return reply.code(400).send({ error: body.error.flatten() })
 
