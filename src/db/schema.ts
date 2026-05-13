@@ -128,6 +128,16 @@ export const bodyProfiles = pgTable('body_profiles', {
   activity: numeric('activity', { precision: 4, scale: 3 }),
 })
 
+// ── Password Reset Tokens ──────────────────────────────────────────────────────
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),   // raw random token stored (expires soon)
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // ── Relations ──────────────────────────────────────────────────────────────────
 export const usersRelations = relations(users, ({ many, one }) => ({
   habits: many(habits),
@@ -159,3 +169,4 @@ export type DailyMetric = typeof dailyMetrics.$inferSelect
 export type JournalEntry = typeof journalEntries.$inferSelect
 export type Goal = typeof goals.$inferSelect
 export type BodyProfile = typeof bodyProfiles.$inferSelect
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect
