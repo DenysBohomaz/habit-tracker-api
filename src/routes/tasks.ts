@@ -23,10 +23,16 @@ function toDate(v: string | null | undefined): Date | null {
   return new Date(v)
 }
 
-function parseDates<T extends { deadline?: string | null; reminder?: string | null }>(
-  data: T,
-): Omit<T, 'deadline' | 'reminder'> & { deadline: Date | null; reminder: Date | null } {
-  return { ...data, deadline: toDate(data.deadline), reminder: toDate(data.reminder) }
+// Only convert deadline/reminder when they are explicitly present in the payload.
+// If omitted (e.g. PATCH {done:true}), leave them out entirely so Drizzle skips those
+// columns and doesn't accidentally NULL out existing deadlines/reminders.
+function parseDates(data: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...data }
+  if ('deadline' in data) result.deadline = toDate(data.deadline as string | null | undefined)
+  else delete result.deadline
+  if ('reminder' in data) result.reminder = toDate(data.reminder as string | null | undefined)
+  else delete result.reminder
+  return result
 }
 
 export default async function tasksRoutes(app: FastifyInstance) {
@@ -43,7 +49,8 @@ export default async function tasksRoutes(app: FastifyInstance) {
     const { sub: userId } = req.user as { sub: string }
     const body = taskBody.safeParse(req.body)
     if (!body.success) return reply.code(400).send({ error: body.error.flatten() })
-    const [task] = await db.insert(tasks).values({ ...parseDates(body.data), userId }).returning()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [task] = await db.insert(tasks).values({ ...(parseDates(body.data as Record<string, unknown>) as any), userId }).returning()
     return reply.code(201).send(task)
   })
 
@@ -55,7 +62,8 @@ export default async function tasksRoutes(app: FastifyInstance) {
     if (!body.success) return reply.code(400).send({ error: body.error.flatten() })
     const [updated] = await db
       .update(tasks)
-      .set(parseDates(body.data as z.infer<typeof taskBody>))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .set(parseDates(body.data as Record<string, unknown>) as any)
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
       .returning()
     if (!updated) return reply.code(404).send({ error: 'Not found' })
