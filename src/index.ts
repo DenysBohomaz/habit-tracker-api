@@ -18,8 +18,18 @@ import migrateRoutes from './routes/migrate.js'
 const app = Fastify({ logger: process.env.NODE_ENV !== 'production' })
 
 // ── Plugins ────────────────────────────────────────────────────────────────────
+const allowedOrigin = process.env.FRONTEND_URL
 await app.register(cors, {
-  origin: process.env.FRONTEND_URL ?? '*',
+  origin: allowedOrigin
+    ? function(origin, cb) {
+        // Allow exact match, all *.vercel.app subdomains, and no-origin (mobile/curl)
+        if (!origin || origin === allowedOrigin || origin.endsWith('.vercel.app') || origin.includes('localhost')) {
+          cb(null, true)
+        } else {
+          cb(new Error('CORS not allowed'), false)
+        }
+      }
+    : true,
   credentials: true,
 })
 await app.register(cookie)
